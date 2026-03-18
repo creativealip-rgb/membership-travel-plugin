@@ -24,6 +24,7 @@ class DB {
         $defaults = [
             'status'      => '',
             'destination' => '',
+            'is_featured' => null,
             'search'      => '',
             'orderby'     => 'start_date',
             'order'       => 'DESC',
@@ -41,6 +42,10 @@ class DB {
         if ($args['destination']) {
             $where[] = 'destination LIKE %s';
             $values[] = '%' . $wpdb->esc_like($args['destination']) . '%';
+        }
+        if ($args['is_featured'] !== null) {
+            $where[] = 'is_featured = %d';
+            $values[] = (int) $args['is_featured'];
         }
         if ($args['search']) {
             $where[] = '(title LIKE %s OR destination LIKE %s)';

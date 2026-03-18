@@ -91,6 +91,13 @@
                     </div>
 
                     <div class="ts-field">
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: bold; cursor: pointer;">
+                            <input type="checkbox" name="is_featured" value="1" <?php checked($tour->is_featured ?? 0, 1); ?>>
+                            Tampilkan di Homepage (Featured)
+                        </label>
+                    </div>
+
+                    <div class="ts-field">
                         <label for="price">Harga per Orang (Rp)</label>
                         <input type="number" id="price" name="price" min="0" step="1000"
                                value="<?php echo esc_attr($tour->price ?? 0); ?>">

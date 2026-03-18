@@ -37,6 +37,7 @@ class Activator {
             excludes TEXT,
             terms TEXT,
             status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            is_featured TINYINT(1) NOT NULL DEFAULT 0,
             created_by BIGINT(20) UNSIGNED DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

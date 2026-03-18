@@ -97,6 +97,7 @@ class AdminTours {
             'excludes'         => wp_kses_post($post['excludes'] ?? ''),
             'terms'            => wp_kses_post($post['terms'] ?? ''),
             'status'           => sanitize_text_field($post['status'] ?? 'draft'),
+            'is_featured'      => isset($post['is_featured']) ? 1 : 0,
         ];
     }
 }
