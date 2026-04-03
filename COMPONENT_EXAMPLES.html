@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Membership Pro - Component Showcase</title>
+    <link rel="stylesheet" href="public/css/travel-membership.css">
+    <style>
+        body { 
+            padding: 40px; 
+            background: #f7fafc;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .showcase { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+        .section { 
+            background: #fff; 
+            padding: 30px; 
+            margin: 30px 0; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        .section h2 { 
+            margin-top: 0; 
+            color: #1a202c;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            margin: 20px 0;
+        }
+        .example { 
+            padding: 20px; 
+            background: #f7fafc; 
+            border-radius: 8px;
+            text-align: center;
+        }
+        code { 
+            display: block; 
+            background: #1a202c; 
+            color: #48bb78; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: left;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body class="tmpb-wrapper">
+    <div class="showcase">
+        <h1 style="text-align: center; color: #1a202c; margin-bottom: 40px;">🎨 Travel Membership Pro - Component Showcase</h1>
+        
+        <!-- Buttons -->
+        <div class="section">
+            <h2>1. Buttons</h2>
+            <div class="grid">
+                <div class="example">
+                    <button class="tmpb-btn tmpb-btn-primary">Primary</button>
+                    <code>&lt;button class="tmpb-btn tmpb-btn-primary"&gt;</code>
+                </div>
+                <div class="example">
+                    <button class="tmpb-btn tmpb-btn-secondary">Secondary</button>
+                    <code>&lt;button class="tmpb-btn tmpb-btn-secondary"&gt;</code>
+                </div>
+                <div class="example">
+                    <button class="tmpb-btn tmpb-btn-success">Success</button>
+                    <code>&lt;button class="tmpb-btn tmpb-btn-success"&gt;</code>
+                </div>
+                <div class="example">
+                    <button class="tmpb-btn tmpb-btn-warning">Warning</button>
+                    <code>&lt;button class="tmpb-btn tmpb-btn-warning"&gt;</code>
+                </div>
+                <div class="example">
+                    <button class="tmpb-btn tmpb-btn-danger">Danger</button>
+                    <code>&lt;button class="tmpb-btn tmpb-btn-danger"&gt;</code>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="section">
+            <h2>2. Stats Cards</h2>
+            <div class="grid">
+                <div class="tmpb-stat-card">
+                    <span class="tmpb-stat-icon">🌍</span>
+                    <div class="tmpb-stat-number">42</div>
+                    <div class="tmpb-stat-label">Countries Visited</div>
+                </div>
+                <div class="tmpb-stat-card">
+                    <span class="tmpb-stat-icon">✈️</span>
+                    <div class="tmpb-stat-number">127</div>
+                    <div class="tmpb-stat-label">Total Flights</div>
+                </div>
+                <div class="tmpb-stat-card">
+                    <span class="tmpb-stat-icon">🏨</span>
+                    <div class="tmpb-stat-number">89</div>
+                    <div class="tmpb-stat-label">Hotels Booked</div>
+                </div>
+                <div class="tmpb-stat-card">
+                    <span class="tmpb-stat-icon">⭐</span>
+                    <div class="tmpb-stat-number">4.9</div>
+                    <div class="tmpb-stat-label">Average Rating</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Travel Cards -->
+        <div class="section">
+            <h2>3. Travel Cards</h2>
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                <div class="tmpb-travel-card">
+                    <div class="tmpb-travel-thumbnail-wrapper">
+                        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400" class="tmpb-travel-thumbnail" alt="Beach">
+                    </div>
+                    <div class="tmpb-travel-content">
+                        <h3 class="tmpb-travel-title">Bali Paradise Tour</h3>
+                        <div class="tmpb-travel-meta">
+                            <span class="tmpb-travel-meta-item">📅 7 days</span>
+                            <span class="tmpb-travel-meta-item">👥 2-10 pax</span>
+                        </div>
+                        <p class="tmpb-travel-excerpt">Experience the beautiful beaches and culture of Bali with our comprehensive tour package.</p>
+                        <div class="tmpb-travel-actions">
+                            <button class="tmpb-btn tmpb-btn-primary">Book Now</button>
+                            <button class="tmpb-btn tmpb-btn-secondary">Details</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="tmpb-travel-card">
+                    <div class="tmpb-travel-thumbnail-wrapper">
+                        <img src="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=400" class="tmpb-travel-thumbnail" alt="Mountain">
+                    </div>
+                    <div class="tmpb-travel-content">
+                        <h3 class="tmpb-travel-title">Alpine Adventure</h3>
+                        <div class="tmpb-travel-meta">
+                            <span class="tmpb-travel-meta-item">📅 5 days</span>
+                            <span class="tmpb-travel-meta-item">👥 4-8 pax</span>
+                        </div>
+                        <p class="tmpb-travel-excerpt">Explore the majestic Alps with guided hiking tours and luxury mountain accommodations.</p>
+                        <div class="tmpb-travel-actions">
+                            <button class="tmpb-btn tmpb-btn-primary">Book Now</button>
+                            <button class="tmpb-btn tmpb-btn-secondary">Details</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Form Elements -->
+        <div class="section">
+            <h2>4. Form Elements</h2>
+            <div style="max-width: 600px;">
+                <div class="tmpb-form-group">
+                    <label>Full Name</label>
+                    <input type="text" placeholder="Enter your name">
+                </div>
+                <div class="tmpb-form-group">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="you@example.com">
+                </div>
+                <div class="tmpb-form-row">
+                    <div class="tmpb-form-group">
+                        <label>Travel Date</label>
+                        <input type="date">
+                    </div>
+                    <div class="tmpb-form-group">
+                        <label>Number of Pax</label>
+                        <input type="number" value="1" min="1">
+                    </div>
+                </div>
+                <div class="tmpb-form-group">
+                    <label>Special Requests</label>
+                    <textarea rows="4" placeholder="Any special requirements?"></textarea>
+                </div>
+                <button class="tmpb-btn tmpb-btn-primary tmpb-btn-block tmpb-btn-lg">Submit Booking</button>
+            </div>
+        </div>
+        
+        <!-- Status Badges -->
+        <div class="section">
+            <h2>5. Status Badges</h2>
+            <div class="grid">
+                <div class="example">
+                    <span class="tmpb-booking-status" style="background: #d4edda; color: #2f855a;">✅ Confirmed</span>
+                    <code>Confirmed</code>
+                </div>
+                <div class="example">
+                    <span class="tmpb-booking-status" style="background: #fff3cd; color: #975a16;">⏳ Pending</span>
+                    <code>Pending</code>
+                </div>
+                <div class="example">
+                    <span class="tmpb-booking-status" style="background: #cce5ff; color: #2c5282;">📤 Uploaded</span>
+                    <code>Uploaded</code>
+                </div>
+                <div class="example">
+                    <span class="tmpb-booking-status" style="background: #f8d7da; color: #c53030;">❌ Cancelled</span>
+                    <code>Cancelled</code>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Country Badges -->
+        <div class="section">
+            <h2>6. Country Badges</h2>
+            <div>
+                <span class="tmpb-country-badge">🇮🇩 Indonesia</span>
+                <span class="tmpb-country-badge">🇹🇭 Thailand</span>
+                <span class="tmpb-country-badge">🇯🇵 Japan</span>
+                <span class="tmpb-country-badge">🇰🇷 South Korea</span>
+                <span class="tmpb-country-badge">🇸🇬 Singapore</span>
+                <span class="tmpb-country-badge">🇲🇾 Malaysia</span>
+                <span class="tmpb-country-badge">🇵🇭 Philippines</span>
+                <span class="tmpb-country-badge">🇻🇳 Vietnam</span>
+            </div>
+        </div>
+        
+        <!-- Alerts -->
+        <div class="section">
+            <h2>7. Alerts & Notices</h2>
+            <div class="tmpb-booking-details" style="background: var(--tmp-color-success-bg); border: 2px solid var(--tmp-color-success); padding: var(--tmp-spacing-lg); border-radius: var(--tmp-radius-lg); margin: 20px 0;">
+                <h3 style="color: var(--tmp-color-success); margin-top: 0;">✅ Booking Successful!</h3>
+                <p style="margin: 10px 0; color: var(--tmp-color-text-medium);">Your tour has been booked successfully. Check your email for confirmation.</p>
+            </div>
+            
+            <div class="tmpb-upgrade-notice">
+                <strong>⚠️ Warning:</strong> Please complete your payment within 24 hours to confirm your booking.
+            </div>
+            
+            <div class="tmpb-dashboard-notice">
+                <strong>ℹ️ Notice:</strong> New tours available for the upcoming season!
+            </div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="section">
+            <h2>8. Loading States</h2>
+            <div class="tmpb-loading">
+                <div class="tmpb-spinner"></div>
+                <p>Loading your bookings...</p>
+            </div>
+        </div>
+        
+        <!-- Booking Card -->
+        <div class="section">
+            <h2>9. Booking Card (Sidebar)</h2>
+            <div style="max-width: 400px; margin: 0 auto;">
+                <div class="tmpb-booking-card">
+                    <div class="tmpb-booking-price">
+                        <span class="tmpb-price-amount">Rp 2,500,000</span>
+                        <span class="tmpb-price-label">per person</span>
+                    </div>
+                    <div class="tmpb-booking-meta">
+                        <div>⏱️ 7 days</div>
+                        <div>👥 Min: 2 pax</div>
+                        <div>🎫 Quota: 15 persons</div>
+                    </div>
+                    <button class="tmpb-btn tmpb-btn-primary tmpb-btn-block tmpb-btn-lg">Book Now</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Itinerary -->
+        <div class="section">
+            <h2>10. Itinerary Days</h2>
+            <div class="tmpb-itinerary-day">
+                <h3>Day 1: Arrival in Bali</h3>
+                <p>Welcome at the airport, transfer to hotel, and evening welcome dinner.</p>
+            </div>
+            <div class="tmpb-itinerary-day">
+                <h3>Day 2: Ubud Cultural Tour</h3>
+                <p>Visit ancient temples, traditional markets, and enjoy a Balinese dance performance.</p>
+            </div>
+            <div class="tmpb-itinerary-day">
+                <h3>Day 3: Beach & Water Sports</h3>
+                <p>Full day at Nusa Dua beach with optional surfing, snorkeling, and jet skiing.</p>
+            </div>
+        </div>
+        
+        <!-- Includes/Excludes -->
+        <div class="section">
+            <h2>11. Includes & Excludes</h2>
+            <div class="tmpb-tour-includes-excludes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="tmpb-tour-includes">
+                    <h3>✅ Included</h3>
+                    <ul>
+                        <li>Hotel accommodation (6 nights)</li>
+                        <li>Daily breakfast</li>
+                        <li>Airport transfers</li>
+                        <li>Professional guide</li>
+                        <li>Entrance fees</li>
+                    </ul>
+                </div>
+                <div class="tmpb-tour-excludes">
+                    <h3>❌ Excluded</h3>
+                    <ul>
+                        <li>International flights</li>
+                        <li>Travel insurance</li>
+                        <li>Personal expenses</li>
+                        <li>Optional activities</li>
+                        <li>Tips and gratuities</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

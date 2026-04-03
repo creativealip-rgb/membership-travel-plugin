@@ -1,0 +1,101 @@
+<?php
+/**
+ * Custom Post Type: Destination
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class TMP_Travel_Post_Type {
+    
+    public function __construct() {
+        add_action('init', [$this, 'register']);
+        add_filter('manage_destination_posts_columns', [$this, 'custom_columns']);
+        add_action('manage_destination_posts_custom_column', [$this, 'custom_column_content'], 10, 2);
+    }
+    
+    /**
+     * Register post type
+     */
+    public function register() {
+        $labels = [
+            'name' => __('Destinations', 'travel-membership-pro'),
+            'singular_name' => __('Destination', 'travel-membership-pro'),
+            'menu_name' => __('Destinations', 'travel-membership-pro'),
+            'add_new' => __('Add New', 'travel-membership-pro'),
+            'add_new_item' => __('Add New Destination', 'travel-membership-pro'),
+            'edit_item' => __('Edit Destination', 'travel-membership-pro'),
+            'new_item' => __('New Destination', 'travel-membership-pro'),
+            'view_item' => __('View Destination', 'travel-membership-pro'),
+            'search_items' => __('Search Destinations', 'travel-membership-pro'),
+            'not_found' => __('No destinations found', 'travel-membership-pro'),
+            'not_found_in_trash' => __('No destinations found in trash', 'travel-membership-pro'),
+        ];
+        
+        $args = [
+            'labels' => $labels,
+            'public' => true,
+            'publicly_queryable' => true,
+            'show_ui' => true,
+            'show_in_menu' => 'edit.php?post_type=tour',
+            'show_in_rest' => true,
+            'menu_icon' => 'dashicons-location-alt',
+            'capability_type' => 'post',
+            'map_meta_cap' => true,
+            'has_archive' => true,
+            'rewrite' => ['slug' => 'destination', 'with_front' => false],
+            'supports' => ['title', 'editor', 'thumbnail', 'excerpt', 'comments', 'custom-fields'],
+            'show_in_graphql' => true,
+            'graphql_single_name' => 'destination',
+            'graphql_plural_name' => 'destinations',
+        ];
+        
+        register_post_type('destination', $args);
+    }
+    
+    /**
+     * Custom columns
+     */
+    public function custom_columns($columns) {
+        $new_columns = [];
+        
+        foreach ($columns as $key => $value) {
+            $new_columns[$key] = $value;
+            
+            if ($key === 'title') {
+                // Country column - will be added below
+                // Category column - will be added below
+            }
+        }
+        
+        return $new_columns;
+    }
+    
+    /**
+     * Custom column content
+     */
+    public function custom_column_content($column, $post_id) {
+        switch ($column) {
+            case 'country':
+                $countries = get_the_terms($post_id, 'country');
+                if ($countries && !is_wp_error($countries)) {
+                    $country_names = wp_list_pluck($countries, 'name');
+                    echo esc_html(implode(', ', $country_names));
+                } else {
+                    echo '—';
+                }
+                break;
+                
+            case 'category':
+                $categories = get_the_terms($post_id, 'travel_category');
+                if ($categories && !is_wp_error($categories)) {
+                    $category_names = wp_list_pluck($categories, 'name');
+                    echo esc_html(implode(', ', $category_names));
+                } else {
+                    echo '—';
+                }
+                break;
+        }
+    }
+}

@@ -1,0 +1,489 @@
+<?php
+/**
+ * Tour Post Type
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class TMP_Tour_Post_Type {
+    
+    public function __construct() {
+        add_action('init', [$this, 'register']);
+        add_filter('manage_tour_posts_columns', [$this, 'custom_columns']);
+        add_action('manage_tour_posts_custom_column', [$this, 'custom_column_content'], 10, 2);
+        
+        // Meta boxes
+        add_action('add_meta_boxes', [$this, 'add_meta_boxes']);
+        add_action('save_post_tour', [$this, 'save_meta'], 10, 2);
+        
+        // Add taxonomy meta boxes
+        add_action('add_meta_boxes', [$this, 'add_taxonomy_meta_boxes']);
+    }
+    
+    public function register() {
+        $labels = [
+            'name' => __('Tours', 'travel-membership-pro'),
+            'singular_name' => __('Tour', 'travel-membership-pro'),
+            'menu_name' => __('Tours', 'travel-membership-pro'),
+            'add_new' => __('Add New Tour', 'travel-membership-pro'),
+            'add_new_item' => __('Add New Tour Package', 'travel-membership-pro'),
+            'edit_item' => __('Edit Tour', 'travel-membership-pro'),
+            'view_item' => __('View Tour', 'travel-membership-pro'),
+        ];
+        
+        $args = [
+            'labels' => $labels,
+            'public' => true,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'show_in_rest' => true,
+            'menu_icon' => 'dashicons-awards',
+            'has_archive' => true,
+            'rewrite' => ['slug' => 'tours', 'with_front' => false, 'feeds' => true, 'pages' => true],
+            'supports' => ['title', 'editor', 'thumbnail', 'excerpt', 'author'],
+            'taxonomies' => ['country', 'travel_category'],
+            'capability_type' => 'post',
+            'map_meta_cap' => true,
+            'publicly_queryable' => true,
+            'show_in_nav_menus' => true,
+        ];
+        
+        register_post_type('tour', $args);
+        
+        // Flush rewrite rules after registering
+        flush_rewrite_rules();
+        
+        // Register existing taxonomies for tour post type
+        register_taxonomy_for_object_type('country', 'tour');
+        register_taxonomy_for_object_type('travel_category', 'tour');
+    }
+    
+    public function custom_columns($columns) {
+        $new = [];
+        foreach ($columns as $key => $value) {
+            $new[$key] = $value;
+            if ($key === 'title') {
+                $new['price'] = __('Price', 'travel-membership-pro');
+                $new['duration'] = __('Duration', 'travel-membership-pro');
+                $new['quota'] = __('Quota', 'travel-membership-pro');
+                $new['bookings'] = __('Bookings', 'travel-membership-pro');
+            }
+        }
+        return $new;
+    }
+    
+    public function custom_column_content($column, $post_id) {
+        switch ($column) {
+            case 'price':
+                $price = get_post_meta($post_id, '_tour_price', true);
+                echo 'Rp ' . number_format(absint($price), 0, ',', '.');
+                break;
+                
+            case 'duration':
+                $days = get_post_meta($post_id, '_tour_duration_days', true);
+                echo $days . ' ' . __('days', 'travel-membership-pro');
+                break;
+                
+            case 'quota':
+                $quota = get_post_meta($post_id, '_tour_quota', true);
+                $booked = $this->get_booked_count($post_id);
+                echo $booked . '/' . $quota;
+                break;
+                
+            case 'bookings':
+                $bookings = $this->get_bookings_count($post_id);
+                echo '<a href="' . admin_url('edit.php?post_type=tour_booking&tour_id=' . $post_id) . '">';
+                echo $bookings . ' ' . __('bookings', 'travel-membership-pro');
+                echo '</a>';
+                break;
+        }
+    }
+    
+    private function get_booked_count($tour_id) {
+        $bookings = get_posts([
+            'post_type' => 'tour_booking',
+            'posts_per_page' => -1,
+            'meta_query' => [
+                [
+                    'key' => '_tour_id',
+                    'value' => $tour_id,
+                ],
+                [
+                    'key' => '_booking_status',
+                    'value' => ['confirmed', 'completed'],
+                    'compare' => 'IN',
+                ],
+            ],
+        ]);
+        return count($bookings);
+    }
+    
+    private function get_bookings_count($tour_id) {
+        return count(get_posts([
+            'post_type' => 'tour_booking',
+            'posts_per_page' => -1,
+            'meta_query' => [
+                ['key' => '_tour_id', 'value' => $tour_id],
+            ],
+        ]));
+    }
+    
+    public function add_meta_boxes() {
+        add_meta_box(
+            'tour_details',
+            __('Tour Details', 'travel-membership-pro'),
+            [$this, 'render_details_box'],
+            'tour',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'tour_itinerary',
+            __('Itinerary', 'travel-membership-pro'),
+            [$this, 'render_itinerary_box'],
+            'tour',
+            'normal',
+            'default'
+        );
+        
+        add_meta_box(
+            'tour_gallery',
+            __('Tour Gallery', 'travel-membership-pro'),
+            [$this, 'render_gallery_box'],
+            'tour',
+            'side',
+            'default'
+        );
+    }
+    
+    public function add_taxonomy_meta_boxes() {
+        // Add Country taxonomy meta box
+        add_meta_box(
+            'tour_country_div',
+            __('Country', 'travel-membership-pro'),
+            [$this, 'render_country_meta_box'],
+            'tour',
+            'side',
+            'core'
+        );
+        
+        // Add Category taxonomy meta box
+        add_meta_box(
+            'tour_category_div',
+            __('Categories', 'travel-membership-pro'),
+            [$this, 'render_category_meta_box'],
+            'tour',
+            'side',
+            'core'
+        );
+    }
+    
+    public function render_country_meta_box($post) {
+        wp_nonce_field('tour_taxonomy_nonce', 'tour_taxonomy_nonce');
+        $selected = wp_get_object_terms($post->ID, 'country', ['fields' => 'ids']);
+        $countries = get_terms(['taxonomy' => 'country', 'hide_empty' => false]);
+        
+        echo '<select name="tour_country" style="width:100%;">';
+        echo '<option value="">Select Country</option>';
+        foreach ($countries as $country) {
+            printf(
+                '<option value="%d" %s>%s</option>',
+                $country->term_id,
+                selected(in_array($country->term_id, $selected), true, false),
+                esc_html($country->name)
+            );
+        }
+        echo '</select>';
+    }
+    
+    public function render_category_meta_box($post) {
+        $selected = wp_get_object_terms($post->ID, 'travel_category', ['fields' => 'ids']);
+        $categories = get_terms(['taxonomy' => 'travel_category', 'hide_empty' => false]);
+        
+        echo '<div style="max-height:200px; overflow-y:auto;">';
+        foreach ($categories as $category) {
+            printf(
+                '<label style="display:block; margin:5px 0;"><input type="checkbox" name="tour_categories[]" value="%d" %s> %s</label>',
+                $category->term_id,
+                checked(in_array($category->term_id, $selected), true, false),
+                esc_html($category->name)
+            );
+        }
+        echo '</div>';
+    }
+    
+    public function render_details_box($post) {
+        wp_nonce_field('tour_details_nonce', 'tour_details_nonce');
+        
+        $price = get_post_meta($post->ID, '_tour_price', true);
+        $duration = get_post_meta($post->ID, '_tour_duration_days', true);
+        $quota = get_post_meta($post->ID, '_tour_quota', true) ?: 20;
+        $min_pax = get_post_meta($post->ID, '_tour_min_pax', true) ?: 2;
+        $location = get_post_meta($post->ID, '_tour_location', true);
+        $includes = get_post_meta($post->ID, '_tour_includes', true);
+        $excludes = get_post_meta($post->ID, '_tour_excludes', true);
+        
+        ?>
+        <table class="form-table">
+            <tr>
+                <th><label><?php esc_html_e('Price (IDR)', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <input type="number" name="tour_price" value="<?php echo esc_attr($price); ?>" 
+                           class="regular-text" min="0" step="1000" required>
+                    <p class="description"><?php esc_html_e('Price per person', 'travel-membership-pro'); ?></p>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label><?php esc_html_e('Duration (Days)', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <input type="number" name="tour_duration" value="<?php echo esc_attr($duration); ?>" 
+                           class="small-text" min="1" required> <?php esc_html_e('days', 'travel-membership-pro'); ?>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label><?php esc_html_e('Quota', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <input type="number" name="tour_quota" value="<?php echo esc_attr($quota); ?>" 
+                           class="small-text" min="1"> <?php esc_html_e('persons per departure', 'travel-membership-pro'); ?>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label><?php esc_html_e('Minimum Pax', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <input type="number" name="tour_min_pax" value="<?php echo esc_attr($min_pax); ?>" 
+                           class="small-text" min="1"> <?php esc_html_e('persons', 'travel-membership-pro'); ?>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label><?php esc_html_e('Location', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <input type="text" name="tour_location" value="<?php echo esc_attr($location); ?>" 
+                           class="large-text" placeholder="e.g., Bali, Indonesia">
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label><?php esc_html_e('Includes', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <textarea name="tour_includes" rows="4" class="large-text" 
+                              placeholder="Hotel, Meals, Transport, Guide, etc. (one per line)"><?php echo esc_textarea($includes); ?></textarea>
+                </td>
+            </tr>
+            
+            <tr>
+                <th><label><?php esc_html_e('Excludes', 'travel-membership-pro'); ?></label></th>
+                <td>
+                    <textarea name="tour_excludes" rows="4" class="large-text" 
+                              placeholder="Flight tickets, Personal expenses, etc. (one per line)"><?php echo esc_textarea($excludes); ?></textarea>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+    
+    public function render_itinerary_box($post) {
+        $itinerary = get_post_meta($post->ID, '_tour_itinerary', true);
+        
+        ?>
+        <div id="tour-itinerary-builder">
+            <p class="description"><?php esc_html_e('Add day-by-day itinerary', 'travel-membership-pro'); ?></p>
+            
+            <div id="itinerary-items">
+                <?php 
+                if (!empty($itinerary) && is_array($itinerary)) {
+                    foreach ($itinerary as $index => $day) {
+                        $this->render_itinerary_item($index, $day);
+                    }
+                }
+                ?>
+            </div>
+            
+            <button type="button" class="button" id="add-itinerary-day">
+                <?php esc_html_e('+ Add Day', 'travel-membership-pro'); ?>
+            </button>
+        </div>
+        
+        <script>
+        jQuery(document).ready(function($) {
+            var index = <?php echo !empty($itinerary) ? count($itinerary) : 0; ?>;
+            
+            $('#add-itinerary-day').on('click', function() {
+                var html = `
+                    <div class="itinerary-item" style="border:1px solid #ddd; padding:15px; margin:10px 0; background:#fff;">
+                        <input type="text" name="itinerary[day][]" value="Day ${index + 1}" 
+                               class="regular-text" placeholder="Day title" style="margin-bottom:10px;">
+                        <textarea name="itinerary[description][]" rows="3" class="large-text" 
+                                  placeholder="Day description"></textarea>
+                        <button type="button" class="button remove-itinerary" style="margin-top:10px;">Remove</button>
+                    </div>
+                `;
+                $('#itinerary-items').append(html);
+                index++;
+            });
+            
+            $(document).on('click', '.remove-itinerary', function() {
+                $(this).closest('.itinerary-item').remove();
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    private function render_itinerary_item($index, $day) {
+        $title = $day['day'] ?? 'Day ' . ($index + 1);
+        $desc = $day['description'] ?? '';
+        
+        ?>
+        <div class="itinerary-item" style="border:1px solid #ddd; padding:15px; margin:10px 0; background:#fff;">
+            <input type="text" name="itinerary[day][]" value="<?php echo esc_attr($title); ?>" 
+                   class="regular-text" placeholder="Day title" style="margin-bottom:10px;">
+            <textarea name="itinerary[description][]" rows="3" class="large-text" 
+                      placeholder="Day description"><?php echo esc_textarea($desc); ?></textarea>
+            <button type="button" class="button remove-itinerary" style="margin-top:10px;">
+                <?php esc_html_e('Remove', 'travel-membership-pro'); ?>
+            </button>
+        </div>
+        <?php
+    }
+    
+    public function render_gallery_box($post) {
+        $gallery = get_post_meta($post->ID, '_tour_gallery', true);
+        $gallery = is_array($gallery) ? $gallery : [];
+        ?>
+        <div id="tour-gallery-preview" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+            <?php foreach ($gallery as $img_id): 
+                $img = wp_get_attachment_image($img_id, 'thumbnail');
+                if ($img):
+            ?>
+                <div style="position:relative;">
+                    <?php echo $img; ?>
+                    <button type="button" class="remove-gallery-img" 
+                            data-id="<?php echo esc_attr($img_id); ?>"
+                            style="position:absolute; top:-5px; right:-5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">×</button>
+                </div>
+            <?php 
+                endif;
+            endforeach; ?>
+        </div>
+        
+        <button type="button" class="button" id="add-tour-gallery">
+            <?php esc_html_e('Add Images', 'travel-membership-pro'); ?>
+        </button>
+        
+        <input type="hidden" name="tour_gallery" id="tour-gallery-input" value="<?php echo esc_attr(implode(',', $gallery)); ?>">
+        
+        <script>
+        jQuery(document).ready(function($) {
+            var frame;
+            
+            $('#add-tour-gallery').on('click', function(e) {
+                e.preventDefault();
+                
+                if (frame) {
+                    frame.open();
+                    return;
+                }
+                
+                frame = wp.media({
+                    title: 'Select Tour Images',
+                    button: { text: 'Add to Gallery' },
+                    multiple: true
+                });
+                
+                frame.on('select', function() {
+                    var attachments = frame.state().get('selection').toArray();
+                    var current = $('#tour-gallery-input').val().split(',').filter(Boolean);
+                    
+                    attachments.forEach(function(attachment) {
+                        if (!current.includes(attachment.id.toString())) {
+                            current.push(attachment.id);
+                            $('#tour-gallery-preview').append(`
+                                <div style="position:relative;">
+                                    ${attachment.attributes.sizes.thumbnail.url ? 
+                                        '<img src="' + attachment.attributes.sizes.thumbnail.url + '" style="width:100px; height:100px; object-fit:cover;">' : 
+                                        ''}
+                                    <button type="button" class="remove-gallery-img" 
+                                            data-id="${attachment.id}"
+                                            style="position:absolute; top:-5px; right:-5px; background:red; color:white; border:none; border-radius:50%; width:20px; height:20px; cursor:pointer;">×</button>
+                                </div>
+                            `);
+                        }
+                    });
+                    
+                    $('#tour-gallery-input').val(current.join(','));
+                });
+                
+                frame.open();
+            });
+            
+            $(document).on('click', '.remove-gallery-img', function() {
+                var id = $(this).data('id');
+                $(this).closest('div').remove();
+                
+                var current = $('#tour-gallery-input').val().split(',').filter(Boolean);
+                current = current.filter(function(item) { return item != id; });
+                $('#tour-gallery-input').val(current.join(','));
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    public function save_meta($post_id, $post) {
+        if (!isset($_POST['tour_details_nonce']) || 
+            !wp_verify_nonce($_POST['tour_details_nonce'], 'tour_details_nonce')) {
+            return;
+        }
+        
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+        if (!current_user_can('edit_post', $post_id)) return;
+        
+        // Save tour details
+        update_post_meta($post_id, '_tour_price', absint($_POST['tour_price'] ?? 0));
+        update_post_meta($post_id, '_tour_duration_days', absint($_POST['tour_duration'] ?? 1));
+        update_post_meta($post_id, '_tour_quota', absint($_POST['tour_quota'] ?? 20));
+        update_post_meta($post_id, '_tour_min_pax', absint($_POST['tour_min_pax'] ?? 2));
+        update_post_meta($post_id, '_tour_location', sanitize_text_field($_POST['tour_location'] ?? ''));
+        update_post_meta($post_id, '_tour_includes', sanitize_textarea_field($_POST['tour_includes'] ?? ''));
+        update_post_meta($post_id, '_tour_excludes', sanitize_textarea_field($_POST['tour_excludes'] ?? ''));
+        
+        // Save itinerary
+        if (!empty($_POST['itinerary']['day'])) {
+            $itinerary = [];
+            $days = $_POST['itinerary']['day'];
+            $descs = $_POST['itinerary']['description'];
+            
+            foreach ($days as $index => $day) {
+                $itinerary[] = [
+                    'day' => sanitize_text_field($day),
+                    'description' => sanitize_textarea_field($descs[$index] ?? ''),
+                ];
+            }
+            
+            update_post_meta($post_id, '_tour_itinerary', $itinerary);
+        }
+        
+        // Save gallery
+        if (!empty($_POST['tour_gallery'])) {
+            $gallery = array_map('absint', explode(',', $_POST['tour_gallery']));
+            update_post_meta($post_id, '_tour_gallery', $gallery);
+        }
+        
+        // Save country taxonomy
+        if (!empty($_POST['tour_country'])) {
+            wp_set_object_terms($post_id, absint($_POST['tour_country']), 'country');
+        }
+        
+        // Save category taxonomy
+        if (!empty($_POST['tour_categories'])) {
+            wp_set_object_terms($post_id, array_map('absint', $_POST['tour_categories']), 'travel_category');
+        }
+    }
+}

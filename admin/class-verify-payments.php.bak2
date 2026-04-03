@@ -1,0 +1,299 @@
+<?php
+/**
+ * Simple Admin Menu for Payment Verification
+ * Easy access to verify member payments
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class TMP_Verify_Payments {
+    
+    public function __construct() {
+        add_action('admin_menu', [$this, 'add_admin_menu']);
+    }
+    
+    /**
+     * Add admin menu
+     */
+    public function add_admin_menu() {
+        );
+        
+        // Submenu
+        add_submenu_page(
+            'tmp-verify-payments',
+            'Verify Payments',
+            'All Payments',
+            'manage_options',
+            'tmp-verify-payments',
+            [$this, 'render_verify_page']
+        );
+        
+        // Bank Settings submenu
+        add_submenu_page(
+            'tmp-verify-payments',
+            'Bank Accounts',
+            'Bank Settings',
+            'manage_options',
+            'tmp-bank-settings',
+            [$this, 'render_bank_settings']
+        );
+    }
+    
+    /**
+     * Render verify payments page
+     */
+    public function render_verify_page() {
+        ?>
+        <div class="wrap">
+            <h1 style="margin-bottom: 20px;">✅ Verify Member Payments</h1>
+            
+            <?php
+            // Get all users with pending payments
+            $users = get_users(['meta_key' => '_tmp_pending_tier']);
+            
+            if (empty($users)) {
+                echo '<div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; border-radius: 8px; margin-bottom: 24px;">';
+                echo '<h2 style="margin: 0 0 8px 0; color: #166534;">🎉 All Caught Up!</h2>';
+                echo '<p style="margin: 0; color: #166534;">No pending payment verifications at the moment.</p>';
+                echo '</div>';
+            } else {
+                echo '<div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">';
+                echo '<table class="wp-list-table widefat fixed striped" style="width: 100%;">';
+                echo '<thead>';
+                echo '<tr>';
+                echo '<th style="padding: 12px;">User</th>';
+                echo '<th style="padding: 12px;">Email</th>';
+                echo '<th style="padding: 12px;">Tier</th>';
+                echo '<th style="padding: 12px;">Order ID</th>';
+                echo '<th style="padding: 12px;">Submitted</th>';
+                echo '<th style="padding: 12px;">Actions</th>';
+                echo '</tr>';
+                echo '</thead>';
+                echo '<tbody>';
+                
+                foreach ($users as $user) {
+                    $tier = get_user_meta($user->ID, '_tmp_pending_tier', true);
+                    $order_id = get_user_meta($user->ID, '_tmp_pending_order_id', true);
+                    
+                    // Get payment proof
+                    $payments = get_user_meta($user->ID, '_tmp_manual_payments', false);
+                    $last_payment = !empty($payments) ? end($payments) : null;
+                    $submitted_at = isset($last_payment['submitted_at']) ? $last_payment['submitted_at'] : 'Unknown';
+                    
+                    echo '<tr>';
+                    echo '<td style="padding: 12px;"><strong>' . esc_html($user->display_name) . '</strong></td>';
+                    echo '<td style="padding: 12px;">' . esc_html($user->user_email) . '</td>';
+                    echo '<td style="padding: 12px;"><span style="background: #fbbf24; color: #000; padding: 4px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600;">' . esc_html(ucfirst($tier)) . '</span></td>';
+                    echo '<td style="padding: 12px;"><code>' . esc_html($order_id) . '</code></td>';
+                    echo '<td style="padding: 12px;">' . esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($submitted_at))) . '</td>';
+                    echo '<td style="padding: 12px;">';
+                    
+                    // View proof button (if exists)
+                    if ($last_payment && !empty($last_payment['proof_url'])) {
+                        echo '<a href="' . esc_url($last_payment['proof_url']) . '" target="_blank" style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 600; margin-right: 8px; display: inline-block;">👁️ View Proof</a>';
+                    }
+                    
+                    // Approve button
+                    echo '<button class="approve-payment-btn" data-user-id="' . $user->ID . '" data-tier="' . esc_attr($tier) . '" data-order="' . esc_attr($order_id) . '" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px;">✅ Approve & Activate</button>';
+                    
+                    echo '</td>';
+                    echo '</tr>';
+                }
+                
+                echo '</tbody></table>';
+                echo '</div>';
+            }
+            ?>
+            
+            <!-- Payment Statistics -->
+            <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: #f59e0b;"><?php echo count($users); ?></div>
+                    <div style="color: #64748b; font-size: 14px; margin-top: 4px;">Pending Verifications</div>
+                </div>
+                
+                <?php
+                $silver_count = count(array_filter($users, function($user) {
+                    return get_user_meta($user->ID, '_tmp_pending_tier', true) === 'silver';
+                }));
+                $gold_count = count($users) - $silver_count;
+                ?>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: #94a3b8;"><?php echo $silver_count; ?></div>
+                    <div style="color: #64748b; font-size: 14px; margin-top: 4px;">Silver Upgrades</div>
+                </div>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center;">
+                    <div style="font-size: 32px; font-weight: 700; color: #fbbf24;"><?php echo $gold_count; ?></div>
+                    <div style="color: #64748b; font-size: 14px; margin-top: 4px;">Gold Upgrades</div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        // Approve payment
+        document.querySelectorAll('.approve-payment-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const tier = this.dataset.tier;
+                const orderId = this.dataset.order;
+                
+                if (!confirm('Approve payment for ' + userId + ' and activate ' + tier + ' membership?\n\nOrder ID: ' + orderId)) {
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('action', 'tmp_approve_payment');
+                formData.append('user_id', userId);
+                formData.append('tier', tier);
+                
+                const originalText = this.textContent;
+                this.disabled = true;
+                this.textContent = 'Activating...';
+                
+                fetch(ajaxurl, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Membership activated successfully!\n\nUser will receive confirmation email.');
+                        location.reload();
+                    } else {
+                        alert('❌ Error: ' + (data.message || 'Unknown error'));
+                        this.disabled = false;
+                        this.textContent = originalText;
+                    }
+                })
+                .catch(err => {
+                    alert('❌ Error: ' + err.message);
+                    this.disabled = false;
+                    this.textContent = originalText;
+                });
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    /**
+     * Render bank settings page
+     */
+    public function render_bank_settings() {
+        $bank_accounts = get_option('tmp_bank_accounts', [
+            [
+                'bank' => 'BCA',
+                'account_name' => 'PT TravelShip Indonesia',
+                'account_number' => '',
+            ],
+        ]);
+        
+        ?>
+        <div class="wrap">
+            <h1 style="margin-bottom: 20px;">🏦 Bank Accounts Settings</h1>
+            
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                <strong>📝 Instructions:</strong>
+                <p style="margin: 8px 0 0 0; color: #78350f;">
+                    Add your bank account details here. Users will see these accounts on the checkout page and transfer manually.
+                </p>
+            </div>
+            
+            <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+                <input type="hidden" name="action" value="tmp_save_bank_accounts">
+                <?php wp_nonce_field('tmp_save_bank_accounts', 'bank_accounts_nonce'); ?>
+                
+                <div id="bank-accounts-container">
+                    <?php foreach ($bank_accounts as $index => $bank) : ?>
+                    <div class="bank-account-row" style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e5e7eb;">
+                        <h3 style="margin-bottom: 12px; font-size: 16px;">Bank Account #<?php echo $index + 1; ?></h3>
+                        
+                        <div style="display: grid; gap: 12px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: 600;">Bank Name</label>
+                                <input type="text" name="bank_accounts[<?php echo $index; ?>][bank]" 
+                                       value="<?php echo esc_attr($bank['bank']); ?>" 
+                                       style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;"
+                                       placeholder="e.g., BCA, Mandiri, BNI" required>
+                            </div>
+                            
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: 600;">Account Name</label>
+                                <input type="text" name="bank_accounts[<?php echo $index; ?>][account_name]" 
+                                       value="<?php echo esc_attr($bank['account_name']); ?>" 
+                                       style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;"
+                                       placeholder="e.g., PT TravelShip Indonesia" required>
+                            </div>
+                            
+                            <div>
+                                <label style="display: block; margin-bottom: 4px; font-weight: 600;">Account Number</label>
+                                <input type="text" name="bank_accounts[<?php echo $index; ?>][account_number]" 
+                                       value="<?php echo esc_attr($bank['account_number']); ?>" 
+                                       style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;"
+                                       placeholder="e.g., 1234567890" required>
+                            </div>
+                        </div>
+                        
+                        <?php if ($index > 0) : ?>
+                        <button type="button" class="remove-bank-btn" 
+                                style="margin-top: 12px; background: #fee2e2; color: #dc2626; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;"
+                                onclick="this.closest('.bank-account-row').remove()">
+                            🗑️ Remove
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                
+                <button type="button" id="add-bank-btn" 
+                        style="background: #f0f9ff; color: #0369a1; border: 2px solid #bae6fd; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-bottom: 24px;">
+                    ➕ Add Another Bank Account
+                </button>
+                
+                <button type="submit" 
+                        style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border: none; padding: 12px 32px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px;">
+                    💾 Save Bank Accounts
+                </button>
+            </form>
+        </div>
+        
+        <script>
+        document.getElementById('add-bank-btn').addEventListener('click', function() {
+            const container = document.getElementById('bank-accounts-container');
+            const index = container.querySelectorAll('.bank-account-row').length;
+            
+            const row = document.createElement('div');
+            row.className = 'bank-account-row';
+            row.style.cssText = 'background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e5e7eb;';
+            row.innerHTML = `
+                <h3 style="margin-bottom: 12px; font-size: 16px;">Bank Account #${index + 1}</h3>
+                <div style="display: grid; gap: 12px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; font-weight: 600;">Bank Name</label>
+                        <input type="text" name="bank_accounts[${index}][bank]" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;" placeholder="e.g., BCA, Mandiri, BNI" required>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; font-weight: 600;">Account Name</label>
+                        <input type="text" name="bank_accounts[${index}][account_name]" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;" placeholder="e.g., PT TravelShip Indonesia" required>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; font-weight: 600;">Account Number</label>
+                        <input type="text" name="bank_accounts[${index}][account_number]" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;" placeholder="e.g., 1234567890" required>
+                    </div>
+                </div>
+                <button type="button" class="remove-bank-btn" style="margin-top: 12px; background: #fee2e2; color: #dc2626; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;" onclick="this.closest('.bank-account-row').remove()">🗑️ Remove</button>
+            `;
+            
+            container.appendChild(row);
+        });
+        </script>
+        <?php
+    }
+}
+
+// Initialize
+new TMP_Verify_Payments();

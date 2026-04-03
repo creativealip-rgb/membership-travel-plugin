@@ -1,0 +1,179 @@
+<?php
+/**
+ * Tour Admin
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class TMP_Tour_Admin {
+    
+    public function __construct() {
+        add_action('admin_menu', [$this, 'add_submenu']);
+        add_filter('manage_tour_booking_posts_columns', [$this, 'booking_columns']);
+        add_action('manage_tour_booking_posts_custom_column', [$this, 'booking_column_content'], 10, 2);
+        add_action('wp_ajax_tmpb_admin_update_status', [$this, 'ajax_update_booking_status']);
+        add_action('add_meta_boxes', [$this, 'add_booking_meta_boxes']);
+    }
+    
+    public function add_submenu() {
+        add_submenu_page(
+            'edit.php?post_type=tour',
+            __('Tour Settings', 'travel-membership-pro'),
+            __('Settings', 'travel-membership-pro'),
+            'manage_options',
+            'tmpb-settings',
+            [$this, 'render_settings_page']
+        );
+    }
+    
+    public function booking_columns($columns) {
+        return [
+            'cb' => '<input type="checkbox" />',
+            'title' => __('Booking', 'travel-membership-pro'),
+            'tour' => __('Tour', 'travel-membership-pro'),
+            'customer' => __('Customer', 'travel-membership-pro'),
+            'pax' => __('Pax', 'travel-membership-pro'),
+            'total' => __('Total', 'travel-membership-pro'),
+            'status' => __('Status', 'travel-membership-pro'),
+            'date' => __('Date', 'travel-membership-pro'),
+        ];
+    }
+    
+    public function booking_column_content($column, $post_id) {
+        switch ($column) {
+            case 'tour':
+                $tour_id = get_post_meta($post_id, '_tour_id', true);
+                if ($tour_id) {
+                    echo '<a href="' . get_edit_post_link($tour_id) . '">';
+                    echo get_the_title($tour_id);
+                    echo '</a>';
+                }
+                break;
+            case 'customer':
+                $name = get_post_meta($post_id, '_customer_name', true);
+                $email = get_post_meta($post_id, '_customer_email', true);
+                echo '<strong>' . esc_html($name) . '</strong><br>';
+                echo esc_html($email);
+                break;
+            case 'pax':
+                echo esc_html(get_post_meta($post_id, '_pax', true));
+                break;
+            case 'total':
+                $total = get_post_meta($post_id, '_total_amount', true);
+                echo 'Rp ' . number_format($total, 0, ',', '.');
+                break;
+            case 'status':
+                $status = get_post_meta($post_id, '_booking_status', true);
+                $status_labels = [
+                    'pending_payment' => '⏳ Pending Payment',
+                    'payment_uploaded' => '📤 Payment Uploaded',
+                    'paid' => '✅ Paid',
+                    'confirmed' => '✓ Confirmed',
+                    'cancelled' => '❌ Cancelled',
+                    'completed' => '✔ Completed',
+                    'refunded' => '💰 Refunded',
+                ];
+                echo '<span style="padding:4px 8px; background:#f0f0f1; border-radius:3px;">';
+                echo $status_labels[$status] ?? $status;
+                echo '</span>';
+                break;
+            case 'date':
+                $date = get_post_meta($post_id, '_booking_date', true);
+                echo date_i18n(get_option('date_format'), strtotime($date));
+                break;
+        }
+    }
+    
+    public function add_booking_meta_boxes() {
+        add_meta_box('booking_details', __('Booking Details', 'travel-membership-pro'), [$this, 'render_booking_details'], 'tour_booking', 'normal', 'high');
+        add_meta_box('booking_actions', __('Actions', 'travel-membership-pro'), [$this, 'render_booking_actions'], 'tour_booking', 'side', 'high');
+    }
+    
+    public function render_booking_details($post) {
+        $booking_id = $post->ID;
+        $tour_id = get_post_meta($booking_id, '_tour_id', true);
+        $tour = get_post($tour_id);
+        ?>
+        <table class="form-table">
+            <tr><th>Booking Code</th><td><code><?php echo get_post_meta($booking_id, '_booking_code', true); ?></code></td></tr>
+            <tr><th>Tour</th><td><strong><?php echo $tour ? $tour->post_title : 'N/A'; ?></strong></td></tr>
+            <tr><th>Customer</th><td><?php echo get_post_meta($booking_id, '_customer_name', true); ?><br><?php echo get_post_meta($booking_id, '_customer_email', true); ?></td></tr>
+            <tr><th>Pax</th><td><?php echo get_post_meta($booking_id, '_pax', true); ?></td></tr>
+            <tr><th>Total</th><td>Rp <?php echo number_format(get_post_meta($booking_id, '_total_amount', true), 0, ',', '.'); ?></td></tr>
+            <tr><th>Status</th><td><?php echo get_post_meta($booking_id, '_booking_status', true); ?></td></tr>
+        </table>
+        <?php
+    }
+    
+    public function render_booking_actions($post) {
+        $status = get_post_meta($post->ID, '_booking_status', true);
+        ?>
+        <div id="booking-actions">
+            <p><strong>Update Status:</strong></p>
+            <select id="booking-status-update" style="width:100%; margin-bottom:10px;">
+                <option value="pending_payment" <?php selected($status, 'pending_payment'); ?>>⏳ Pending Payment</option>
+                <option value="payment_uploaded" <?php selected($status, 'payment_uploaded'); ?>>📤 Payment Uploaded</option>
+                <option value="paid" <?php selected($status, 'paid'); ?>>✅ Paid</option>
+                <option value="confirmed" <?php selected($status, 'confirmed'); ?>>✓ Confirmed</option>
+                <option value="cancelled" <?php selected($status, 'cancelled'); ?>>❌ Cancelled</option>
+            </select>
+            <button class="button button-primary" id="update-booking-status" style="width:100%;">Update Status</button>
+        </div>
+        <script>
+        jQuery(document).ready(function($) {
+            $('#update-booking-status').on('click', function() {
+                var status = $('#booking-status-update').val();
+                var data = {
+                    action: 'tmpb_admin_update_status',
+                    booking_id: <?php echo $post->ID; ?>,
+                    status: status
+                };
+                $.post(ajaxurl, data, function(response) {
+                    if(response.success) {
+                        alert('Status updated!');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.data.message);
+                    }
+                });
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    public function ajax_update_booking_status() {
+        if (!current_user_can('edit_posts')) {
+            wp_send_json_error(['message' => 'Unauthorized']);
+        }
+        $booking_id = intval($_POST['booking_id'] ?? 0);
+        $new_status = sanitize_text_field($_POST['status'] ?? '');
+        if (!$booking_id || !$new_status) {
+            wp_send_json_error(['message' => 'Invalid data']);
+        }
+        $valid_statuses = ['pending_payment', 'payment_uploaded', 'paid', 'confirmed', 'cancelled', 'completed', 'refunded'];
+        if (!in_array($new_status, $valid_statuses)) {
+            wp_send_json_error(['message' => 'Invalid status']);
+        }
+        update_post_meta($booking_id, '_booking_status', $new_status);
+        if ($new_status === 'confirmed') {
+            $user_id = get_post_meta($booking_id, '_user_id', true);
+            if ($user_id) {
+                $count = intval(get_user_meta($user_id, '_tmp_bookings_count', true));
+                update_user_meta($user_id, '_tmp_bookings_count', $count + 1);
+            }
+        }
+        wp_send_json_success(['message' => 'Status updated successfully']);
+    }
+    
+    public function render_settings_page() {
+        ?>
+        <div class="wrap">
+            <h1>Tour Booking Settings</h1>
+            <p>Settings page coming soon...</p>
+        </div>
+        <?php
+    }
+}
