@@ -249,7 +249,38 @@ function tmpb_register_member_menu() {
     add_submenu_page('tmpb-member', 'Upgrade Payments', '💳 Upgrade Payments', 'manage_options', 'tmpb-member-payments', 'tmpb_render_member_payments');
     add_submenu_page('tmpb-member', 'Spending Reports', '📈 Spending Reports', 'manage_options', 'tmpb-member-reports', 'tmpb_render_member_reports');
 }
-function tmpb_render_member_dashboard() { include '/var/www/html/wp-content/themes/contenly-theme/admin/page-member-dashboard.php'; }
-function tmpb_render_member_all() { include '/var/www/html/wp-content/themes/contenly-theme/admin/page-member-all.php'; }
-function tmpb_render_member_payments() { include '/var/www/html/wp-content/themes/contenly-theme/admin/page-member-payments.php'; }
-function tmpb_render_member_reports() { include '/var/www/html/wp-content/themes/contenly-theme/admin/page-member-reports.php'; }
+function tmpb_render_member_dashboard() {
+    $file = trailingslashit(get_template_directory()) . 'admin/page-member-dashboard.php';
+    if (file_exists($file)) {
+        include $file;
+    } else {
+        echo '<div class="notice notice-error"><p>Member dashboard template not found: <code>' . esc_html($file) . '</code></p></div>';
+    }
+}
+
+function tmpb_render_member_all() {
+    $file = trailingslashit(get_template_directory()) . 'admin/page-member-all.php';
+    if (file_exists($file)) {
+        include $file;
+    } else {
+        echo '<div class="notice notice-error"><p>Member list template not found: <code>' . esc_html($file) . '</code></p></div>';
+    }
+}
+
+function tmpb_render_member_payments() {
+    $file = trailingslashit(get_template_directory()) . 'admin/page-member-payments.php';
+    if (file_exists($file)) {
+        include $file;
+    } else {
+        echo '<div class="notice notice-error"><p>Member payments template not found: <code>' . esc_html($file) . '</code></p></div>';
+    }
+}
+
+function tmpb_render_member_reports() {
+    $file = trailingslashit(get_template_directory()) . 'admin/page-member-reports.php';
+    if (file_exists($file)) {
+        include $file;
+    } else {
+        echo '<div class="notice notice-error"><p>Member reports template not found: <code>' . esc_html($file) . '</code></p></div>';
+    }
+}
