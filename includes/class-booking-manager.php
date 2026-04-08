@@ -249,24 +249,40 @@ class TMP_Booking_Manager {
             return new WP_Error('invalid_status', __('Booking payment already processed', 'travel-membership-pro'));
         }
         
-        // Handle file upload
-        if (!empty($_FILES['payment_proof'])) {
-            require_once(ABSPATH . 'wp-admin/includes/image.php');
+        // Handle file upload (frontend-safe; avoid hard failure on media_handle_upload)
+        if (!empty($_FILES['payment_proof']) && !empty($_FILES['payment_proof']['name'])) {
             require_once(ABSPATH . 'wp-admin/includes/file.php');
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
             require_once(ABSPATH . 'wp-admin/includes/media.php');
-            
-            $attachment_id = media_handle_upload('payment_proof', 0);
-            
-            if (is_wp_error($attachment_id)) {
-                return $attachment_id;
+
+            $upload = wp_handle_upload($_FILES['payment_proof'], ['test_form' => false]);
+            if (!empty($upload['error'])) {
+                return new WP_Error('upload_error', sanitize_text_field($upload['error']));
             }
-            
+
+            $attachment = [
+                'post_mime_type' => $upload['type'] ?? 'image/jpeg',
+                'post_title'     => sanitize_file_name(pathinfo($_FILES['payment_proof']['name'], PATHINFO_FILENAME)),
+                'post_content'   => '',
+                'post_status'    => 'inherit',
+            ];
+
+            $attachment_id = wp_insert_attachment($attachment, $upload['file']);
+            if (is_wp_error($attachment_id) || !$attachment_id) {
+                return new WP_Error('attachment_error', __('Failed to save payment proof', 'travel-membership-pro'));
+            }
+
+            $attach_data = wp_generate_attachment_metadata($attachment_id, $upload['file']);
+            if (!is_wp_error($attach_data) && !empty($attach_data)) {
+                wp_update_attachment_metadata($attachment_id, $attach_data);
+            }
+
             update_post_meta($booking_id, '_payment_proof', $attachment_id);
             update_post_meta($booking_id, '_payment_method', sanitize_text_field($payment_data['method'] ?? 'bank_transfer'));
             update_post_meta($booking_id, '_payment_uploaded_at', current_time('mysql'));
-            
+
             $this->update_status($booking_id, 'payment_uploaded');
-            
+
             return $attachment_id;
         }
         
