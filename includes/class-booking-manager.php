@@ -203,12 +203,19 @@ class TMP_Booking_Manager {
     public function update_status($booking_id, $status) {
         update_post_meta($booking_id, '_booking_status', sanitize_text_field($status));
         
-        $valid_statuses = ['pending_payment', 'paid', 'confirmed', 'cancelled', 'completed', 'refunded'];
-        if (in_array($status, $valid_statuses)) {
+        $valid_statuses = ['pending_payment', 'payment_uploaded', 'paid', 'confirmed', 'cancelled', 'completed', 'refunded'];
+        if (in_array($status, $valid_statuses, true)) {
             wp_set_object_terms($booking_id, $status, 'booking_status');
         }
-        
-        $this->send_booking_notification($booking_id, 'status_changed', $status);
+
+        // Skip email notification for intermediate upload state and guard against formatter fatals.
+        if ($status !== 'payment_uploaded') {
+            try {
+                $this->send_booking_notification($booking_id, 'status_changed', $status);
+            } catch (\Throwable $e) {
+                error_log('[TMP] send_booking_notification failed: ' . $e->getMessage());
+            }
+        }
         
         do_action('tmpb_booking_status_changed', $booking_id, $status);
     }
