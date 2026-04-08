@@ -395,8 +395,13 @@ class TMP_Booking_Manager {
         $user_id = get_current_user_id();
         $booking_id = absint($_POST['booking_id'] ?? 0);
         $payment_data = $_POST['payment_data'] ?? [];
-        
-        $result = $this->upload_payment($booking_id, $user_id, $payment_data);
+
+        try {
+            $result = $this->upload_payment($booking_id, $user_id, $payment_data);
+        } catch (\Throwable $e) {
+            error_log('[TMP] ajax_upload_payment fatal: ' . $e->getMessage());
+            wp_send_json_error(['message' => 'Upload error: ' . $e->getMessage()]);
+        }
         
         if (is_wp_error($result)) {
             wp_send_json_error(['message' => $result->get_error_message()]);
