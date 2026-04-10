@@ -103,6 +103,16 @@ class TMP_Booking_Manager {
         // Save travel date
         update_post_meta($booking_id, '_travel_date', sanitize_text_field($data['travel_date'] ?? ''));
         
+        // Save additional traveler details
+        update_post_meta($booking_id, '_traveler_nationality', sanitize_text_field($data['nationality'] ?? ''));
+        update_post_meta($booking_id, '_departure_city', sanitize_text_field($data['departure_city'] ?? ''));
+        update_post_meta($booking_id, '_id_type', sanitize_text_field($data['id_type'] ?? ''));
+        update_post_meta($booking_id, '_id_number', sanitize_text_field($data['id_number'] ?? ''));
+        update_post_meta($booking_id, '_emergency_contact_name', sanitize_text_field($data['emergency_contact_name'] ?? ''));
+        update_post_meta($booking_id, '_emergency_contact_phone', sanitize_text_field($data['emergency_contact_phone'] ?? ''));
+        update_post_meta($booking_id, '_dietary_requirements', sanitize_text_field($data['dietary_requirements'] ?? ''));
+        update_post_meta($booking_id, '_medical_notes', sanitize_text_field($data['medical_notes'] ?? ''));
+
         // Save additional notes
         update_post_meta($booking_id, '_notes', sanitize_textarea_field($data['notes'] ?? ''));
         
@@ -189,6 +199,16 @@ class TMP_Booking_Manager {
             'travel_date' => get_post_meta($booking_id, '_travel_date', true),
             'booking_date' => get_post_meta($booking_id, '_booking_date', true),
             'notes' => get_post_meta($booking_id, '_notes', true),
+            'traveler_details' => [
+                'nationality' => get_post_meta($booking_id, '_traveler_nationality', true),
+                'departure_city' => get_post_meta($booking_id, '_departure_city', true),
+                'id_type' => get_post_meta($booking_id, '_id_type', true),
+                'id_number' => get_post_meta($booking_id, '_id_number', true),
+                'emergency_contact_name' => get_post_meta($booking_id, '_emergency_contact_name', true),
+                'emergency_contact_phone' => get_post_meta($booking_id, '_emergency_contact_phone', true),
+                'dietary_requirements' => get_post_meta($booking_id, '_dietary_requirements', true),
+                'medical_notes' => get_post_meta($booking_id, '_medical_notes', true),
+            ],
             'payment' => [
                 'method' => get_post_meta($booking_id, '_payment_method', true),
                 'proof' => get_post_meta($booking_id, '_payment_proof', true),
