@@ -112,6 +112,13 @@ class TMP_Booking_Manager {
         update_post_meta($booking_id, '_emergency_contact_phone', sanitize_text_field($data['emergency_contact_phone'] ?? ''));
         update_post_meta($booking_id, '_dietary_requirements', sanitize_text_field($data['dietary_requirements'] ?? ''));
         update_post_meta($booking_id, '_medical_notes', sanitize_text_field($data['medical_notes'] ?? ''));
+        update_post_meta($booking_id, '_passport_number', sanitize_text_field($data['passport_number'] ?? ''));
+        update_post_meta($booking_id, '_passport_expiry', sanitize_text_field($data['passport_expiry'] ?? ''));
+        update_post_meta($booking_id, '_visa_required', sanitize_text_field($data['visa_required'] ?? ''));
+        update_post_meta($booking_id, '_visa_status', sanitize_text_field($data['visa_status'] ?? ''));
+        update_post_meta($booking_id, '_visa_number', sanitize_text_field($data['visa_number'] ?? ''));
+        update_post_meta($booking_id, '_visa_expiry', sanitize_text_field($data['visa_expiry'] ?? ''));
+        update_post_meta($booking_id, '_visa_assistance', !empty($data['visa_assistance']) ? '1' : '0');
 
         // Save additional notes
         update_post_meta($booking_id, '_notes', sanitize_textarea_field($data['notes'] ?? ''));
@@ -208,6 +215,13 @@ class TMP_Booking_Manager {
                 'emergency_contact_phone' => get_post_meta($booking_id, '_emergency_contact_phone', true),
                 'dietary_requirements' => get_post_meta($booking_id, '_dietary_requirements', true),
                 'medical_notes' => get_post_meta($booking_id, '_medical_notes', true),
+                'passport_number' => get_post_meta($booking_id, '_passport_number', true),
+                'passport_expiry' => get_post_meta($booking_id, '_passport_expiry', true),
+                'visa_required' => get_post_meta($booking_id, '_visa_required', true),
+                'visa_status' => get_post_meta($booking_id, '_visa_status', true),
+                'visa_number' => get_post_meta($booking_id, '_visa_number', true),
+                'visa_expiry' => get_post_meta($booking_id, '_visa_expiry', true),
+                'visa_assistance' => get_post_meta($booking_id, '_visa_assistance', true),
             ],
             'payment' => [
                 'method' => get_post_meta($booking_id, '_payment_method', true),
