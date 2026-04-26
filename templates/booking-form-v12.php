@@ -151,7 +151,7 @@ $payment_notes = get_option('tmp_payment_notes', '');
         </div>
         
         <div class="tmpb-actions" style="display:flex; gap: var(--tmp-spacing-md); flex-wrap: wrap;">
-            <a href="<?php echo esc_url(get_permalink(get_page_by_path('my-bookings'))); ?>" class="tmpb-btn tmpb-btn-primary">📋 View My Bookings</a>
+            <a href="<?php echo esc_url(function_exists('contenly_localized_url') ? contenly_localized_url('/my-travels/') : home_url('/my-travels/')); ?>" class="tmpb-btn tmpb-btn-primary">📋 View My Bookings</a>
             <a href="<?php echo esc_url(get_permalink($tour_id)); ?>" class="tmpb-btn tmpb-btn-secondary">🔙 Back to Tour</a>
         </div>
     </div>

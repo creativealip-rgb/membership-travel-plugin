@@ -188,5 +188,3 @@ class TMP_Dashboard_Widgets {
         <?php
     }
 }
-
-new TMP_Dashboard_Widgets();

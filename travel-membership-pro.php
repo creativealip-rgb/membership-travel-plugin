@@ -40,6 +40,19 @@ final class Travel_Membership_Pro {
     public $admin;
     public $public;
     public $ajax;
+    public $login;
+    public $email;
+    public $tour_post_type;
+    public $booking;
+    public $payment;
+    public $assets;
+    public $tour_public;
+    public $settings;
+    public $tour_admin;
+    public $booking_settings;
+    public $verify_payments;
+    public $export;
+    public $dashboard;
     
     /**
      * Get instance
@@ -102,6 +115,7 @@ final class Travel_Membership_Pro {
             $this->settings = new TMP_Settings_Page();
             $this->tour_admin = new TMP_Tour_Admin(); // Disabled - settings consolidated
             $this->booking_settings = new TMP_Booking_Settings();
+            $this->verify_payments = new TMP_Verify_Payments();
             $this->export = new TMP_Export_Bookings();
             $this->dashboard = new TMP_Dashboard_Widgets();
         }

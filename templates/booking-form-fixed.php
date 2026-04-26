@@ -119,7 +119,7 @@ $price = get_post_meta($tour_id, 'price', true);
         </div>
         
         <div class="tmpb-actions" style="margin-top:20px;">
-            <a href="<?php echo get_permalink(get_page_by_path('my-bookings')); ?>" class="tmpb-btn tmpb-btn-primary" style="background:#0073aa;color:#fff;padding:10px 20px;text-decoration:none;display:inline-block;">📋 View My Bookings</a>
+            <a href="<?php echo esc_url(function_exists('contenly_localized_url') ? contenly_localized_url('/my-travels/') : home_url('/my-travels/')); ?>" class="tmpb-btn tmpb-btn-primary" style="background:#0073aa;color:#fff;padding:10px 20px;text-decoration:none;display:inline-block;">📋 View My Bookings</a>
             <a href="<?php echo get_permalink($tour_id); ?>" class="tmpb-btn tmpb-btn-secondary" style="background:#6c757d;color:#fff;padding:10px 20px;text-decoration:none;display:inline-block;margin-left:10px;">🔙 Back to Tour</a>
         </div>
     </div>

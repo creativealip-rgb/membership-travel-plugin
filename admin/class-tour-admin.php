@@ -11,8 +11,6 @@ if (!defined('ABSPATH')) {
 class TMP_Tour_Admin {
     
     public function __construct() {
-        add_filter('manage_tour_booking_posts_columns', [$this, 'booking_columns']);
-        add_action('manage_tour_booking_posts_custom_column', [$this, 'booking_column_content'], 10, 2);
         add_action('wp_ajax_tmpb_admin_update_status', [$this, 'ajax_update_status']);
         add_action('add_meta_boxes', [$this, 'add_booking_meta_boxes']);
         add_action('save_post_tour_booking', [$this, 'save_booking_meta'], 10, 2);

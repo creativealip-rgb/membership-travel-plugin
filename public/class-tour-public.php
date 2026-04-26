@@ -150,7 +150,11 @@ class TMP_Tour_Public {
      */
     public function my_bookings($atts) {
         if (!is_user_logged_in()) {
-            return '<div class="tmpb-notice" style="padding:20px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;text-align:center;">Please login to view your bookings. <a href="' . wp_login_url(get_permalink()) . '">Login here</a></div>';
+            $login_url = function_exists('contenly_localized_url')
+                ? contenly_localized_url('/login/')
+                : wp_login_url(get_permalink());
+
+            return '<div class="tmpb-notice" style="padding:20px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;text-align:center;">Please login to view your bookings. <a href="' . esc_url($login_url) . '">Login here</a></div>';
         }
         
         ob_start();

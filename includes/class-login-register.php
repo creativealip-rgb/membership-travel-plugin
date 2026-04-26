@@ -154,5 +154,3 @@ class TMP_Login_Register {
         return ob_get_clean();
     }
 }
-
-new TMP_Login_Register();

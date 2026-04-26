@@ -32,11 +32,14 @@ class TMP_Email_Notifications {
         $bca_name = get_option('tmp_bca_name', 'PT Travel');
         $ewallet_number = get_option('tmp_ewallet_number', '0812-3456-7890');
         
+        $my_travels_url = function_exists('contenly_localized_url')
+            ? contenly_localized_url('/my-travels/')
+            : home_url('/my-travels/');
+
         $subject = sprintf('Booking Confirmation - %s', $booking_code);
         
-        $message = sprintf('
-        <html>
-        <head>
+        $message = sprintf('\n        <html>
+        <head><meta charset="utf-8">
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -116,7 +119,7 @@ class TMP_Email_Notifications {
         $bca_name,
         $bca_name,
         $ewallet_number, $bca_name,
-        get_permalink(get_page_by_path('my-bookings')),
+        $my_travels_url,
         date('Y')
         );
         
@@ -228,11 +231,13 @@ class TMP_Email_Notifications {
         ];
         
         $status_info = $status_messages[$new_status] ?? ['Status Updated', 'Your booking status has been updated.'];
+        $my_travels_url = function_exists('contenly_localized_url')
+            ? contenly_localized_url('/my-travels/')
+            : home_url('/my-travels/');
         
         $subject = sprintf('%s - %s', $status_info[0], $booking_code);
         
-        $message = sprintf('
-        <html>
+        $message = sprintf('\n        <html>
         <head>
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
@@ -278,7 +283,7 @@ class TMP_Email_Notifications {
         $booking_code,
         $tour->post_title,
         ucfirst(str_replace('_', ' ', $new_status)),
-        get_permalink(get_page_by_path('my-bookings'))
+        $my_travels_url
         );
         
         $headers = [
@@ -289,5 +294,3 @@ class TMP_Email_Notifications {
         wp_mail($user->user_email, $subject, $message, $headers);
     }
 }
-
-new TMP_Email_Notifications();

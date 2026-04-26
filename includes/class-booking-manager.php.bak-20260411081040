@@ -10,28 +10,6 @@ if (!defined('ABSPATH')) {
 
 class TMP_Booking_Manager {
     private static $hooks_registered = false;
-
-    private function booking_status_config() {
-        return [
-            'pending_review'   => ['Menunggu review', '#355F72', '#DCE9E6'],
-            'pending_payment'  => ['Menunggu pembayaran', '#92400e', '#fef3c7'],
-            'payment_uploaded' => ['Bukti masuk', '#1d4ed8', '#dbeafe'],
-            'paid'             => ['Lunas', '#065f46', '#d1fae5'],
-            'confirmed'        => ['Dikonfirmasi', '#166534', '#dcfce7'],
-            'completed'        => ['Selesai', '#166534', '#dcfce7'],
-            'cancelled'        => ['Dibatalkan', '#b91c1c', '#fee2e2'],
-            'refunded'         => ['Refund', '#6b21a8', '#f3e8ff'],
-        ];
-    }
-
-    private function sanitize_text_array($value) {
-        if (!is_array($value)) {
-            return [];
-        }
-
-        $items = array_map('sanitize_text_field', $value);
-        return array_values(array_filter(array_map('trim', $items)));
-    }
     
     public function __construct() {
         if (self::$hooks_registered) {
@@ -84,28 +62,15 @@ class TMP_Booking_Manager {
             return new WP_Error('invalid_tour', __('Invalid tour', 'travel-membership-pro'));
         }
         
-        $adult_count = max(1, absint(isset($data['adult_count']) ? $data['adult_count'] : 0));
-        $child_count = max(0, absint(isset($data['child_count']) ? $data['child_count'] : 0));
-        $pax = max(1, absint(isset($data['pax']) ? $data['pax'] : ($adult_count + $child_count)));
-        $travel_date = sanitize_text_field(isset($data['travel_date']) ? $data['travel_date'] : (isset($data['departure_date']) ? $data['departure_date'] : ''));
-        $package_type = sanitize_text_field(isset($data['package_type']) ? $data['package_type'] : 'standard');
-        $departure_type = sanitize_text_field(isset($data['departure_type']) ? $data['departure_type'] : 'meeting-point');
-        $preferred_time = sanitize_text_field(isset($data['preferred_time']) ? $data['preferred_time'] : '');
-        $pickup_location = sanitize_textarea_field(isset($data['pickup_location']) ? $data['pickup_location'] : '');
-        $special_request = sanitize_textarea_field(isset($data['special_request']) ? $data['special_request'] : '');
-
         // Check quota
-        if (!$this->check_availability($tour_id, $pax)) {
+        if (!$this->check_availability($tour_id, $data['pax'] ?? 1)) {
             return new WP_Error('no_quota', __('Tour is fully booked', 'travel-membership-pro'));
         }
         
         // Calculate total
-        $price = absint(get_post_meta($tour_id, 'price', true) ?: get_post_meta($tour_id, '_tour_price', true));
-        $child_price = absint(get_post_meta($tour_id, '_tour_child_price', true));
-        if ($child_price <= 0) {
-            $child_price = $price;
-        }
-        $total = ($price * $adult_count) + ($child_price * $child_count);
+        $price = absint(get_post_meta($tour_id, 'price', true));
+        $pax = absint($data['pax'] ?? 1);
+        $total = $price * $pax;
         
         // Create booking
         $booking_id = wp_insert_post([
@@ -136,58 +101,42 @@ class TMP_Booking_Manager {
         update_post_meta($booking_id, '_booking_id', $booking_id);
         update_post_meta($booking_id, '_user_id', $user_id);
         update_post_meta($booking_id, '_tour_id', $tour_id);
-        update_post_meta($booking_id, '_booking_status', 'pending_review');
+        update_post_meta($booking_id, '_booking_status', 'pending_payment');
         update_post_meta($booking_id, '_total_amount', $total);
-        update_post_meta($booking_id, '_estimated_total', $total);
         update_post_meta($booking_id, '_pax', $pax);
-        update_post_meta($booking_id, '_adult_count', $adult_count);
-        update_post_meta($booking_id, '_child_count', $child_count);
-        update_post_meta($booking_id, '_base_price_adult', $price);
-        update_post_meta($booking_id, '_base_price_child', $child_price);
-        update_post_meta($booking_id, '_package_type', $package_type);
-        update_post_meta($booking_id, '_departure_type', $departure_type);
-        update_post_meta($booking_id, '_preferred_time', $preferred_time);
-        update_post_meta($booking_id, '_pickup_location', $pickup_location);
-        update_post_meta($booking_id, '_special_request', $special_request);
         update_post_meta($booking_id, '_booking_date', current_time('mysql'));
         
         // Save customer details
-        update_post_meta($booking_id, '_customer_name', sanitize_text_field(isset($data['name']) ? $data['name'] : ''));
-        update_post_meta($booking_id, '_customer_email', sanitize_email(isset($data['email']) ? $data['email'] : ''));
-        update_post_meta($booking_id, '_customer_phone', sanitize_text_field(isset($data['phone']) ? $data['phone'] : ''));
-        update_post_meta($booking_id, '_customer_city', sanitize_text_field(isset($data['customer_city']) ? $data['customer_city'] : ''));
-        update_post_meta($booking_id, '_preferred_contact_method', sanitize_text_field(isset($data['preferred_contact_method']) ? $data['preferred_contact_method'] : ''));
+        update_post_meta($booking_id, '_customer_name', sanitize_text_field($data['name'] ?? ''));
+        update_post_meta($booking_id, '_customer_email', sanitize_email($data['email'] ?? ''));
+        update_post_meta($booking_id, '_customer_phone', sanitize_text_field($data['phone'] ?? ''));
         
         // Save travel date
-        update_post_meta($booking_id, '_travel_date', $travel_date);
-        update_post_meta($booking_id, '_lead_traveler_name', sanitize_text_field(isset($data['lead_traveler_name']) ? $data['lead_traveler_name'] : (isset($data['name']) ? $data['name'] : '')));
-        update_post_meta($booking_id, '_participant_names', $this->sanitize_text_array(isset($data['participant_names']) ? $data['participant_names'] : array()));
+        update_post_meta($booking_id, '_travel_date', sanitize_text_field($data['travel_date'] ?? ''));
         
         // Save additional traveler details
-        update_post_meta($booking_id, '_traveler_nationality', sanitize_text_field(isset($data['nationality']) ? $data['nationality'] : ''));
-        update_post_meta($booking_id, '_departure_city', sanitize_text_field(isset($data['departure_city']) ? $data['departure_city'] : ''));
-        update_post_meta($booking_id, '_id_type', sanitize_text_field(isset($data['id_type']) ? $data['id_type'] : ''));
-        update_post_meta($booking_id, '_id_number', sanitize_text_field(isset($data['id_number']) ? $data['id_number'] : ''));
-        update_post_meta($booking_id, '_emergency_contact_name', sanitize_text_field(isset($data['emergency_contact_name']) ? $data['emergency_contact_name'] : ''));
-        update_post_meta($booking_id, '_emergency_contact_phone', sanitize_text_field(isset($data['emergency_contact_phone']) ? $data['emergency_contact_phone'] : ''));
-        update_post_meta($booking_id, '_dietary_requirements', sanitize_text_field(isset($data['dietary_requirements']) ? $data['dietary_requirements'] : ''));
-        update_post_meta($booking_id, '_medical_notes', sanitize_text_field(isset($data['medical_notes']) ? $data['medical_notes'] : ''));
-        update_post_meta($booking_id, '_passport_number', sanitize_text_field(isset($data['passport_number']) ? $data['passport_number'] : ''));
-        update_post_meta($booking_id, '_passport_expiry', sanitize_text_field(isset($data['passport_expiry']) ? $data['passport_expiry'] : ''));
-        update_post_meta($booking_id, '_visa_required', sanitize_text_field(isset($data['visa_required']) ? $data['visa_required'] : ''));
-        update_post_meta($booking_id, '_visa_status', sanitize_text_field(isset($data['visa_status']) ? $data['visa_status'] : ''));
-        update_post_meta($booking_id, '_visa_number', sanitize_text_field(isset($data['visa_number']) ? $data['visa_number'] : ''));
-        update_post_meta($booking_id, '_visa_expiry', sanitize_text_field(isset($data['visa_expiry']) ? $data['visa_expiry'] : ''));
+        update_post_meta($booking_id, '_traveler_nationality', sanitize_text_field($data['nationality'] ?? ''));
+        update_post_meta($booking_id, '_departure_city', sanitize_text_field($data['departure_city'] ?? ''));
+        update_post_meta($booking_id, '_id_type', sanitize_text_field($data['id_type'] ?? ''));
+        update_post_meta($booking_id, '_id_number', sanitize_text_field($data['id_number'] ?? ''));
+        update_post_meta($booking_id, '_emergency_contact_name', sanitize_text_field($data['emergency_contact_name'] ?? ''));
+        update_post_meta($booking_id, '_emergency_contact_phone', sanitize_text_field($data['emergency_contact_phone'] ?? ''));
+        update_post_meta($booking_id, '_dietary_requirements', sanitize_text_field($data['dietary_requirements'] ?? ''));
+        update_post_meta($booking_id, '_medical_notes', sanitize_text_field($data['medical_notes'] ?? ''));
+        update_post_meta($booking_id, '_passport_number', sanitize_text_field($data['passport_number'] ?? ''));
+        update_post_meta($booking_id, '_passport_expiry', sanitize_text_field($data['passport_expiry'] ?? ''));
+        update_post_meta($booking_id, '_visa_required', sanitize_text_field($data['visa_required'] ?? ''));
+        update_post_meta($booking_id, '_visa_status', sanitize_text_field($data['visa_status'] ?? ''));
+        update_post_meta($booking_id, '_visa_number', sanitize_text_field($data['visa_number'] ?? ''));
+        update_post_meta($booking_id, '_visa_expiry', sanitize_text_field($data['visa_expiry'] ?? ''));
         update_post_meta($booking_id, '_visa_assistance', !empty($data['visa_assistance']) ? '1' : '0');
 
         // Save additional notes
-        update_post_meta($booking_id, '_notes', sanitize_textarea_field(isset($data['notes']) ? $data['notes'] : ''));
-        update_post_meta($booking_id, '_order_flow_version', 'premium_request_v1');
+        update_post_meta($booking_id, '_notes', sanitize_textarea_field($data['notes'] ?? ''));
         
         // Generate booking code
-        $booking_code = 'GT-BK-' . current_time('Ymd') . '-' . str_pad((string) $booking_id, 4, '0', STR_PAD_LEFT);
+        $booking_code = 'TMPB-' . strtoupper(uniqid());
         update_post_meta($booking_id, '_booking_code', $booking_code);
-        wp_set_object_terms($booking_id, 'pending_review', 'booking_status');
         
         // Send notification
         $this->send_booking_notification($booking_id, 'new_booking');
@@ -201,29 +150,18 @@ class TMP_Booking_Manager {
      * Check tour availability
      */
     public function check_availability($tour_id, $pax = 1) {
-        $quota = absint(get_post_meta($tour_id, 'quota', true) ?: get_post_meta($tour_id, '_tour_quota', true));
-        $pax = max(1, absint($pax));
-
-        if ($quota <= 0) {
-            return false;
-        }
-
-        $bookings = get_posts([
+        $quota = absint(get_post_meta($tour_id, 'quota', true));
+        
+        $booked = count(get_posts([
             'post_type' => 'tour_booking',
             'posts_per_page' => -1,
-            'fields' => 'ids',
             'meta_query' => [
                 ['key' => '_tour_id', 'value' => $tour_id],
                 ['key' => '_booking_status', 'value' => ['confirmed', 'completed'], 'compare' => 'IN'],
             ],
-        ]);
-
-        $booked_pax = 0;
-        foreach ($bookings as $booking_id) {
-            $booked_pax += max(1, absint(get_post_meta($booking_id, '_pax', true)));
-        }
+        ]));
         
-        return ($booked_pax + $pax) <= $quota;
+        return ($booked + $pax) <= $quota;
     }
     
     /**
@@ -273,23 +211,12 @@ class TMP_Booking_Manager {
                 'name' => get_post_meta($booking_id, '_customer_name', true),
                 'email' => get_post_meta($booking_id, '_customer_email', true),
                 'phone' => get_post_meta($booking_id, '_customer_phone', true),
-                'city' => get_post_meta($booking_id, '_customer_city', true),
-                'preferred_contact_method' => get_post_meta($booking_id, '_preferred_contact_method', true),
             ],
             'pax' => absint(get_post_meta($booking_id, '_pax', true)),
-            'adult_count' => absint(get_post_meta($booking_id, '_adult_count', true)),
-            'child_count' => absint(get_post_meta($booking_id, '_child_count', true)),
             'total' => absint(get_post_meta($booking_id, '_total_amount', true)),
             'travel_date' => get_post_meta($booking_id, '_travel_date', true),
             'booking_date' => get_post_meta($booking_id, '_booking_date', true),
             'notes' => get_post_meta($booking_id, '_notes', true),
-            'package_type' => get_post_meta($booking_id, '_package_type', true),
-            'departure_type' => get_post_meta($booking_id, '_departure_type', true),
-            'preferred_time' => get_post_meta($booking_id, '_preferred_time', true),
-            'pickup_location' => get_post_meta($booking_id, '_pickup_location', true),
-            'special_request' => get_post_meta($booking_id, '_special_request', true),
-            'lead_traveler_name' => get_post_meta($booking_id, '_lead_traveler_name', true),
-            'participant_names' => get_post_meta($booking_id, '_participant_names', true),
             'traveler_details' => [
                 'nationality' => get_post_meta($booking_id, '_traveler_nationality', true),
                 'departure_city' => get_post_meta($booking_id, '_departure_city', true),
@@ -338,7 +265,7 @@ class TMP_Booking_Manager {
             update_post_meta($booking_id, '_payment_method', 'bank_transfer');
         }
         
-        $valid_statuses = array_keys($this->booking_status_config());
+        $valid_statuses = ['pending_payment', 'payment_uploaded', 'paid', 'confirmed', 'cancelled', 'completed', 'refunded'];
         if (in_array($status, $valid_statuses, true)) {
             wp_set_object_terms($booking_id, $status, 'booking_status');
         }
@@ -347,7 +274,7 @@ class TMP_Booking_Manager {
         if ($status !== 'payment_uploaded') {
             try {
                 $this->send_booking_notification($booking_id, 'status_changed', $status);
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 error_log('[TMP] send_booking_notification failed: ' . $e->getMessage());
             }
         }
@@ -403,7 +330,7 @@ class TMP_Booking_Manager {
             }
 
             $attachment = [
-                'post_mime_type' => (isset($upload['type']) ? $upload['type'] : 'image/jpeg'),
+                'post_mime_type' => $upload['type'] ?? 'image/jpeg',
                 'post_title'     => sanitize_file_name(pathinfo($_FILES['payment_proof']['name'], PATHINFO_FILENAME)),
                 'post_content'   => '',
                 'post_status'    => 'inherit',
@@ -420,7 +347,7 @@ class TMP_Booking_Manager {
             }
 
             update_post_meta($booking_id, '_payment_proof', $attachment_id);
-            update_post_meta($booking_id, '_payment_method', sanitize_text_field(isset($payment_data['method']) ? $payment_data['method'] : 'bank_transfer'));
+            update_post_meta($booking_id, '_payment_method', sanitize_text_field($payment_data['method'] ?? 'bank_transfer'));
             update_post_meta($booking_id, '_payment_uploaded_at', current_time('mysql'));
 
             $this->update_status($booking_id, 'payment_uploaded');
@@ -482,15 +409,8 @@ class TMP_Booking_Manager {
         }
         
         $user_id = get_current_user_id();
-        $tour_id = absint(isset($_POST['tour_id']) ? $_POST['tour_id'] : 0);
-        $data = $_POST;
-
-        if (!empty($_POST['data']) && is_string($_POST['data'])) {
-            $decoded = json_decode(wp_unslash($_POST['data']), true);
-            if (is_array($decoded)) {
-                $data = array_merge($data, $decoded);
-            }
-        }
+        $tour_id = absint($_POST['tour_id'] ?? 0);
+        $data = array_merge($_POST) ?? [];
         
         if (!$tour_id) {
             wp_send_json_error(['message' => __('Invalid tour', 'travel-membership-pro')]);
@@ -520,7 +440,7 @@ class TMP_Booking_Manager {
         }
         
         $user_id = get_current_user_id();
-        $booking_id = absint(isset($_POST['booking_id']) ? $_POST['booking_id'] : 0);
+        $booking_id = absint($_POST['booking_id'] ?? 0);
         
         $result = $this->cancel_booking($booking_id, $user_id);
         
@@ -542,12 +462,12 @@ class TMP_Booking_Manager {
         }
         
         $user_id = get_current_user_id();
-        $booking_id = absint(isset($_POST['booking_id']) ? $_POST['booking_id'] : 0);
-        $payment_data = isset($_POST['payment_data']) ? $_POST['payment_data'] : array();
+        $booking_id = absint($_POST['booking_id'] ?? 0);
+        $payment_data = $_POST['payment_data'] ?? [];
 
         try {
             $result = $this->upload_payment($booking_id, $user_id, $payment_data);
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log('[TMP] ajax_upload_payment fatal: ' . $e->getMessage());
             wp_send_json_error(['message' => 'Upload error: ' . $e->getMessage()]);
         }
@@ -572,7 +492,7 @@ class TMP_Booking_Manager {
 
     public function admin_booking_columns($columns) {
         return [
-            'cb'            => isset($columns['cb']) ? $columns['cb'] : '<input type="checkbox" />',
+            'cb'            => $columns['cb'] ?? '<input type="checkbox" />',
             'title'         => __('Booking', 'travel-membership-pro'),
             'booking_code'  => __('Code', 'travel-membership-pro'),
             'traveler'      => __('Traveler', 'travel-membership-pro'),
@@ -635,11 +555,17 @@ class TMP_Booking_Manager {
     }
 
     private function render_status_badge($status) {
-        $map = $this->booking_status_config();
+        $map = [
+            'pending_payment' => ['Menunggu pembayaran', '#92400e', '#fef3c7'],
+            'payment_uploaded' => ['Bukti masuk', '#1d4ed8', '#dbeafe'],
+            'paid' => ['Lunas', '#065f46', '#d1fae5'],
+            'confirmed' => ['Dikonfirmasi', '#166534', '#dcfce7'],
+            'completed' => ['Selesai', '#166534', '#dcfce7'],
+            'cancelled' => ['Dibatalkan', '#b91c1c', '#fee2e2'],
+            'refunded' => ['Refund', '#6b21a8', '#f3e8ff'],
+        ];
 
-        $label = isset($map[$status][0]) ? $map[$status][0] : ucwords(str_replace('_', ' ', (string) $status));
-        $color = isset($map[$status][1]) ? $map[$status][1] : '#334155';
-        $bg = isset($map[$status][2]) ? $map[$status][2] : '#e2e8f0';
+        [$label, $color, $bg] = $map[$status] ?? [ucwords(str_replace('_', ' ', (string) $status)), '#334155', '#e2e8f0'];
 
         echo '<span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;color:' . esc_attr($color) . ';background:' . esc_attr($bg) . ';">' . esc_html($label) . '</span>';
     }
@@ -653,35 +579,23 @@ class TMP_Booking_Manager {
         $proof_url = $proof_id ? wp_get_attachment_url($proof_id) : '';
         $customer_name = get_post_meta($booking_id, '_customer_name', true);
         $customer_email = get_post_meta($booking_id, '_customer_email', true);
-        $customer_phone = get_post_meta($booking_id, '_customer_phone', true);
         $travel_date = get_post_meta($booking_id, '_travel_date', true);
         $pax = absint(get_post_meta($booking_id, '_pax', true));
-        $adult_count = absint(get_post_meta($booking_id, '_adult_count', true));
-        $child_count = absint(get_post_meta($booking_id, '_child_count', true));
         $total = absint(get_post_meta($booking_id, '_total_amount', true));
-        $package_type = get_post_meta($booking_id, '_package_type', true);
-        $departure_type = get_post_meta($booking_id, '_departure_type', true);
-        $preferred_time = get_post_meta($booking_id, '_preferred_time', true);
-        $pickup_location = get_post_meta($booking_id, '_pickup_location', true);
-        $lead_traveler_name = get_post_meta($booking_id, '_lead_traveler_name', true);
-        $participant_names = get_post_meta($booking_id, '_participant_names', true);
-        if (!is_array($participant_names)) { $participant_names = []; }
         $payment_uploaded_at = get_post_meta($booking_id, '_payment_uploaded_at', true);
         $payment_paid_at = get_post_meta($booking_id, '_payment_paid_at', true);
 
         $allowed_transitions = [
-            'pending_review' => ['confirmed', 'pending_payment', 'cancelled'],
             'pending_payment' => ['payment_uploaded', 'paid', 'cancelled'],
             'payment_uploaded' => ['paid', 'confirmed', 'cancelled'],
             'paid' => ['confirmed', 'cancelled', 'refunded'],
             'confirmed' => ['completed', 'cancelled', 'refunded'],
             'completed' => ['refunded'],
-            'cancelled' => ['pending_review', 'pending_payment'],
+            'cancelled' => ['pending_payment'],
             'refunded' => [],
         ];
 
         $transition_labels = [
-            'pending_review'   => 'Kembalikan ke menunggu review',
             'payment_uploaded' => 'Set bukti masuk',
             'paid'             => 'Tandai lunas',
             'confirmed'        => 'Konfirmasi booking',
@@ -697,37 +611,19 @@ class TMP_Booking_Manager {
         echo '<div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;">';
         echo '<div style="font-size:12px;color:#64748b;margin-bottom:6px;">Status saat ini</div>';
         $this->render_status_badge($status);
-        echo '<div style="margin-top:8px;font-size:12px;color:#475569;">Code: <strong>' . esc_html($booking_code ? $booking_code : '—') . '</strong></div>';
+        echo '<div style="margin-top:8px;font-size:12px;color:#475569;">Code: <strong>' . esc_html($booking_code ?: '—') . '</strong></div>';
         echo '</div>';
 
         echo '<div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;display:grid;gap:6px;font-size:12px;">';
-        echo '<div><strong>Traveler:</strong> ' . esc_html($customer_name ? $customer_name : 'Traveler') . '</div>';
+        echo '<div><strong>Traveler:</strong> ' . esc_html($customer_name ?: 'Traveler') . '</div>';
         if ($customer_email) {
             echo '<div><strong>Email:</strong> <a href="mailto:' . esc_attr($customer_email) . '">' . esc_html($customer_email) . '</a></div>';
-        }
-        if ($customer_phone) {
-            echo '<div><strong>Phone:</strong> ' . esc_html($customer_phone) . '</div>';
         }
         if ($tour_id) {
             echo '<div><strong>Tour:</strong> <a href="' . esc_url(get_edit_post_link($tour_id)) . '">' . esc_html(get_the_title($tour_id)) . '</a></div>';
         }
-        echo '<div><strong>Travel Date:</strong> ' . esc_html($travel_date ? $travel_date : '—') . '</div>';
-        echo '<div><strong>Paket:</strong> ' . esc_html($package_type ? $package_type : 'standard') . '</div>';
-        echo '<div><strong>Keberangkatan:</strong> ' . esc_html($departure_type ? $departure_type : 'meeting-point') . '</div>';
-        if ($preferred_time) {
-            echo '<div><strong>Preferensi waktu:</strong> ' . esc_html($preferred_time) . '</div>';
-        }
-        if ($pickup_location) {
-            echo '<div><strong>Pickup / meeting note:</strong> ' . esc_html($pickup_location) . '</div>';
-        }
-        echo '<div><strong>Pax:</strong> ' . esc_html((string) ($pax ? $pax : 1)) . '</div>';
-        echo '<div><strong>Dewasa / Anak:</strong> ' . esc_html((string) ($adult_count ? $adult_count : max(1, $pax))) . ' / ' . esc_html((string) max(0, $child_count)) . '</div>';
-        if ($lead_traveler_name) {
-            echo '<div><strong>Lead traveler:</strong> ' . esc_html($lead_traveler_name) . '</div>';
-        }
-        if (!empty($participant_names)) {
-            echo '<div><strong>Peserta lain:</strong> ' . esc_html(implode(', ', $participant_names)) . '</div>';
-        }
+        echo '<div><strong>Travel Date:</strong> ' . esc_html($travel_date ?: '—') . '</div>';
+        echo '<div><strong>Pax:</strong> ' . esc_html((string) ($pax ?: 1)) . '</div>';
         echo '<div><strong>Total:</strong> Rp ' . esc_html(number_format($total, 0, ',', '.')) . '</div>';
         if ($payment_uploaded_at) {
             echo '<div><strong>Uploaded:</strong> ' . esc_html($payment_uploaded_at) . '</div>';
@@ -753,8 +649,8 @@ class TMP_Booking_Manager {
         echo '<div style="display:grid;gap:10px;">';
         echo '<div><label for="' . esc_attr($select_id) . '" style="display:block;font-weight:700;font-size:12px;margin-bottom:6px;">Update status cepat</label>';
         echo '<select id="' . esc_attr($select_id) . '" style="width:100%;">';
-        foreach ((isset($allowed_transitions[$status]) ? $allowed_transitions[$status] : array()) as $next_status) {
-            echo '<option value="' . esc_attr($next_status) . '">' . esc_html(isset($transition_labels[$next_status]) ? $transition_labels[$next_status] : $next_status) . '</option>';
+        foreach (($allowed_transitions[$status] ?? []) as $next_status) {
+            echo '<option value="' . esc_attr($next_status) . '">' . esc_html($transition_labels[$next_status] ?? $next_status) . '</option>';
         }
         echo '</select></div>';
         echo '<label style="display:grid;gap:6px;font-size:12px;font-weight:700;">Catatan admin';
@@ -774,16 +670,16 @@ class TMP_Booking_Manager {
             wp_die(__('Unauthorized', 'travel-membership-pro'));
         }
 
-        $booking_id = absint(isset($_POST['booking_id']) ? $_POST['booking_id'] : 0);
-        $new_status = sanitize_text_field(isset($_POST['new_status']) ? $_POST['new_status'] : '');
-        $admin_note = sanitize_textarea_field(isset($_POST['admin_note']) ? $_POST['admin_note'] : '');
+        $booking_id = absint($_POST['booking_id'] ?? 0);
+        $new_status = sanitize_text_field($_POST['new_status'] ?? '');
+        $admin_note = sanitize_textarea_field($_POST['admin_note'] ?? '');
 
-        if (!$booking_id || !wp_verify_nonce(isset($_POST['tmpb_admin_status_nonce']) ? $_POST['tmpb_admin_status_nonce'] : '', 'tmpb_admin_update_status_' . $booking_id)) {
+        if (!$booking_id || !wp_verify_nonce($_POST['tmpb_admin_status_nonce'] ?? '', 'tmpb_admin_update_status_' . $booking_id)) {
             wp_die(__('Invalid request', 'travel-membership-pro'));
         }
 
-        $valid_statuses = array_keys($this->booking_status_config());
-        $redirect_to = esc_url_raw(isset($_POST['redirect_to']) ? $_POST['redirect_to'] : '');
+        $valid_statuses = ['pending_payment', 'payment_uploaded', 'paid', 'confirmed', 'cancelled', 'completed', 'refunded'];
+        $redirect_to = esc_url_raw($_POST['redirect_to'] ?? '');
         if (!$redirect_to) {
             $redirect_to = add_query_arg(['post' => $booking_id, 'action' => 'edit'], admin_url('post.php'));
         }

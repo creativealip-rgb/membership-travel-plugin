@@ -95,5 +95,3 @@ class TMP_Export_Bookings {
         <?php
     }
 }
-
-new TMP_Export_Bookings();
